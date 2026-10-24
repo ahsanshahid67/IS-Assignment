@@ -1,0 +1,389 @@
+================================================================================
+WEB APPLICATION SECURITY PROJECT: BLUE TEAM DEFENSE REPORT
+BEFORE (VULNERABLE) VS. AFTER (SECURE / REMEDIATED) COMPARISON
+Application Name: TechVault E-Commerce Security Platform
+================================================================================
+
+PROJECT OVERVIEW:
+This document details the side-by-side comparison between the intentionally
+vulnerable implementation (Before) and the remediated, industry-standard
+hardened implementation (After).
+
+Locations:
+- Vulnerable Version (Before):
+  Frontend: http://localhost/IS_Assignment/frontend/
+  Backend:  e:\MAMP\htdocs\IS_Assignment\backend\
+- Safe Version (After):
+  Frontend: http://localhost/IS_Assignment/safe/frontend/
+  Backend:  e:\MAMP\htdocs\IS_Assignment/safe/backend/
+
+================================================================================
+TABLE OF VULNERABILITY COMPARISONS
+================================================================================
+1. Reflected Cross-Site Scripting (Reflected XSS)
+2. Stored Cross-Site Scripting (Stored XSS)
+3. DOM-Based Cross-Site Scripting (DOM XSS)
+4. Cross-Site Request Forgery (CSRF)
+5. SQL Injection (Easy - Authentication Bypass)
+6. SQL Injection (Intermediate - Error-Based Information Leakage)
+7. SQL Injection (Advanced - UNION-Based Data Extraction)
+8. Session Management & Cookie Security Configuration
+
+================================================================================
+1. REFLECTED CROSS-SITE SCRIPTING (REFLECTED XSS)
+================================================================================
+Vulnerable Endpoint: backend/api/search.php
+Frontend Trigger:    frontend/index.html (Search Catalog form)
+
+A. BEFORE (Vulnerable Implementation):
+--------------------------------------------------------------------------------
+- Flaw: The backend directly interpolated the unvalidated $_GET['q'] query string 
+  into raw HTML, and the frontend injected it straight into the DOM via innerHTML.
+
+[Vulnerable Code - backend/api/search.php]:
+<?php
+$q = $_GET['q'] ?? '';
+echo json_encode([
+    "html" => "Showing search results for: <strong>$q</strong>"
+]);
+
+[Vulnerable Code - frontend/index.html]:
+banner.className = 'search-banner';
+banner.innerHTML = data.html; // <-- Dangerous sink executes arbitrary scripts
+
+B. AFTER (Remediated Safe Implementation):
+--------------------------------------------------------------------------------
+- Fix: Output encoding is enforced on the backend via htmlspecialchars() with
+  ENT_QUOTES and ENT_HTML5. On the frontend, DOM insertion uses textContent
+  and safe DOM node methods, guaranteeing user input is treated strictly as text.
+
+[Remediated Code - safe/backend/api/search.php]:
+<?php
+$q = trim($_GET['q'] ?? '');
+$safe_q = htmlspecialchars($q, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+echo json_encode([
+    "query" => $safe_q,
+    "html" => "Showing search results for: <strong>" . $safe_q . "</strong>"
+]);
+
+[Remediated Code - safe/frontend/index.html]:
+banner.textContent = '';
+const strongText = document.createElement('strong');
+strongText.textContent = data.query || q; // Safe: browser treats input strictly as text
+banner.append("Showing search results for: ", strongText);
+
+C. ATTACK PAYLOAD & RESULT:
+- Payload: <script>alert('Reflected XSS')</script>
+- Before: Alert dialog executes immediately in the browser.
+- After:  Payload is displayed harmlessly as plain text: "<script>alert('Reflected XSS')</script>".
+
+
+================================================================================
+2. STORED CROSS-SITE SCRIPTING (STORED XSS)
+================================================================================
+Vulnerable Endpoint: backend/api/add_review.php & init.php
+Frontend Trigger:    frontend/product.html (Customer Evaluation form)
+
+A. BEFORE (Vulnerable Implementation):
+--------------------------------------------------------------------------------
+- Flaw: User review comments were stored in the database without HTML tag 
+  sanitization. Upon retrieval, product.html concatenated the raw comment directly
+  into an innerHTML template string.
+
+[Vulnerable Code - backend/api/add_review.php]:
+$sql = "INSERT INTO reviews (product_id, author, comment) VALUES ($pid, '$c_author', '$c_comment')";
+$res = mysqli_query($conn, $sql);
+
+[Vulnerable Code - frontend/product.html]:
+feed.innerHTML = reviews.map(r => `
+    <div class="review-comment">${r.comment}</div>
+`).join(''); // <-- Raw HTML rendered; any stored script executes for all visitors
+
+B. AFTER (Remediated Safe Implementation):
+--------------------------------------------------------------------------------
+- Fix: Defense-in-depth approach:
+  1. Backend sanitizes input using strip_tags() and htmlspecialchars() before DB storage.
+  2. Prepared statements prevent SQL syntax breakage during insertion.
+  3. Frontend renders review contents with escapeHtml() and encodes special characters.
+
+[Remediated Code - safe/backend/api/add_review.php]:
+$clean_author = htmlspecialchars(strip_tags($author), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+$clean_comment = htmlspecialchars(strip_tags($comment), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+$stmt = mysqli_prepare($conn, "INSERT INTO reviews (product_id, author, comment) VALUES (?, ?, ?)");
+mysqli_stmt_bind_param($stmt, "iss", $pid, $clean_author, $clean_comment);
+mysqli_stmt_execute($stmt);
+
+[Remediated Code - safe/frontend/product.html]:
+feed.innerHTML = reviews.map(r => `
+    <div class="review-comment">${escapeHtml(r.comment)}</div>
+`).join('');
+
+C. ATTACK PAYLOAD & RESULT:
+- Payload: <img src="x" onerror="alert('Stored XSS - Persistent Execution')">
+- Before: Payload triggers the popup automatically every time any visitor opens the product.
+- After:  Payload is sanitized at ingestion and safely escaped during rendering.
+
+
+================================================================================
+3. DOM-BASED CROSS-SITE SCRIPTING (DOM XSS)
+================================================================================
+Frontend Trigger: frontend/checkout.html (Corporate Voucher Preview)
+
+A. BEFORE (Vulnerable Implementation):
+--------------------------------------------------------------------------------
+- Flaw: Client-side JavaScript read window.location.hash without sanitization and 
+  assigned it directly to the innerHTML property of voucher-preview-canvas.
+
+[Vulnerable Code - frontend/checkout.html]:
+function renderDomVoucher(rawCode) {
+    const canvas = document.getElementById('voucher-preview-canvas');
+    canvas.innerHTML = `<strong>Voucher Applied:</strong> ${rawCode}`; // <-- DOM XSS Sink
+}
+
+B. AFTER (Remediated Safe Implementation):
+--------------------------------------------------------------------------------
+- Fix: Replaced innerHTML with safe DOM node creation and textContent. Even if 
+  an attacker passes HTML or event handlers in the URL fragment (#promo=...), the 
+  browser parses the content strictly as text and does not execute script tags.
+
+[Remediated Code - safe/frontend/checkout.html]:
+function renderDomVoucher(rawCode) {
+    const canvas = document.getElementById('voucher-preview-canvas');
+    canvas.textContent = '';
+    
+    const strong = document.createElement('strong');
+    strong.textContent = 'Voucher Applied: ';
+    
+    const codeNode = document.createElement('span');
+    codeNode.textContent = rawCode; // Safe sink: textContent neutralizes execution
+
+    canvas.appendChild(strong);
+    canvas.appendChild(codeNode);
+}
+
+C. ATTACK PAYLOAD & RESULT:
+- Payload URL: checkout.html#promo=<img src=x onerror=alert('DOM_XSS')>
+- Before: An alert dialog pops up immediately upon loading or hashchange.
+- After:  Displays literal text "<img src=x onerror=alert('DOM_XSS')>". No code executes.
+
+
+================================================================================
+4. CROSS-SITE REQUEST FORGERY (CSRF)
+================================================================================
+Vulnerable Endpoint: backend/api/update_email.php
+Attacker Simulation: frontend/csrf_attacker.html
+
+A. BEFORE (Vulnerable Implementation):
+--------------------------------------------------------------------------------
+- Flaw:
+  1. The endpoint accepted both GET and POST via $_REQUEST without verifying origin.
+  2. No Anti-CSRF Token was issued or validated.
+  3. Session cookies permitted cross-origin transmission, enabling third-party sites
+     to silently forge requests on behalf of authenticated users.
+
+[Vulnerable Code - backend/api/update_email.php]:
+if (!isset($_SESSION['user'])) {
+    echo json_encode(["success" => false, "message" => "Not logged in"]);
+    exit;
+}
+$email = $_REQUEST['email'] ?? '';
+$id = $_SESSION['user']['id'];
+$sql = "UPDATE users SET email = '$email' WHERE id = $id";
+$res = mysqli_query($conn, $sql);
+
+B. AFTER (Remediated Safe Implementation):
+--------------------------------------------------------------------------------
+- Fix:
+  1. Strictly enforce POST requests (reject GET requests with 405 Method Not Allowed).
+  2. Implement Anti-CSRF Tokens: Generate cryptographically strong random tokens 
+     ($_SESSION['csrf_token'] = bin2hex(random_bytes(32))) and require them on state changes.
+  3. Validate tokens using timing-attack safe comparison (hash_equals()).
+  4. Configure session cookies with SameSite=Strict and HttpOnly=true.
+
+[Remediated Code - safe/backend/api/update_email.php]:
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    exit(json_encode(["success" => false, "message" => "Method not allowed. POST required."]));
+}
+
+$submitted_token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+$session_token = $_SESSION['csrf_token'] ?? '';
+
+if (empty($submitted_token) || empty($session_token) || !hash_equals($session_token, $submitted_token)) {
+    http_response_code(403);
+    exit(json_encode(["success" => false, "message" => "Security verification failed: Invalid or missing CSRF token."]));
+}
+
+C. ATTACK SETUP & RESULT:
+- Setup: Attacker hosts an external malicious page (csrf_attacker.html) that submits
+  a request to change the victim's email to attacker@evil.com.
+- Before: Victim clicks claim reward -> Email is changed silently in the background.
+- After:  Request is blocked immediately with 403 Forbidden ("Invalid or missing CSRF token").
+
+
+================================================================================
+5. SQL INJECTION (EASY - AUTHENTICATION BYPASS)
+================================================================================
+Vulnerable Endpoint: backend/api/login.php
+Frontend Trigger:    frontend/login.html (Sign In Form)
+
+A. BEFORE (Vulnerable Implementation):
+--------------------------------------------------------------------------------
+- Flaw: User credentials were concatenated directly into a raw SQL string literal.
+  An attacker can inject SQL syntax to force the WHERE clause to evaluate to TRUE.
+
+[Vulnerable Code - backend/api/login.php]:
+$u = $_POST['username'] ?? '';
+$p = $_POST['password'] ?? '';
+$sql = "SELECT * FROM users WHERE username = '$u' AND password = '$p'";
+$res = mysqli_query($conn, $sql);
+
+B. AFTER (Remediated Safe Implementation):
+--------------------------------------------------------------------------------
+- Fix: Parameterized Prepared Statements:
+  1. The SQL query structure is pre-compiled on the database engine.
+  2. User input is transmitted separately as data parameters, making SQL injection impossible.
+  3. Session IDs are regenerated (session_regenerate_id(true)) to prevent Session Fixation.
+
+[Remediated Code - safe/backend/api/login.php]:
+$stmt = mysqli_prepare($conn, "SELECT id, username, password, email, role FROM users WHERE username = ?");
+mysqli_stmt_bind_param($stmt, "s", $u);
+mysqli_stmt_execute($stmt);
+$res = mysqli_stmt_get_result($stmt);
+$user = ($res && mysqli_num_rows($res) > 0) ? mysqli_fetch_assoc($res) : null;
+mysqli_stmt_close($stmt);
+
+// Password verification and session regeneration
+if ($user && (password_verify($p, $user['password']) || $p === $user['password'])) {
+    session_regenerate_id(true);
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    unset($user['password']);
+    $_SESSION['user'] = $user;
+    ...
+}
+
+C. ATTACK PAYLOAD & RESULT:
+- Payload: Username: admin' --   Password: (any text)
+- Before: Query evaluates to: SELECT * FROM users WHERE username = 'admin' -- ...
+          Attacker logs in instantly as administrator without knowing the password.
+- After:  The database looks for a literal username named "admin' -- ".
+          Login fails with "Invalid credentials". Authentication bypass is prevented.
+
+
+================================================================================
+6. SQL INJECTION (INTERMEDIATE - ERROR-BASED & BLIND)
+================================================================================
+Vulnerable Endpoint: backend/api/check_coupon.php
+Frontend Trigger:    frontend/checkout.html (Promotional Code Form)
+
+A. BEFORE (Vulnerable Implementation):
+--------------------------------------------------------------------------------
+- Flaw: The coupon code was concatenated directly into the SQL query. On database 
+  errors, the endpoint leaked raw MySQL error messages (mysqli_error()) back to 
+  the client in JSON format.
+
+[Vulnerable Code - backend/api/check_coupon.php]:
+$code = $_GET['coupon_code'] ?? '';
+$sql = "SELECT id, discount FROM coupons WHERE code = '$code'";
+$res = mysqli_query($conn, $sql);
+
+if (!$res) {
+    echo json_encode(["status" => "error", "message" => mysqli_error($conn)]); // Information Leak
+}
+
+B. AFTER (Remediated Safe Implementation):
+--------------------------------------------------------------------------------
+- Fix:
+  1. Input is bound to a prepared statement parameter.
+  2. Detailed database errors are strictly suppressed from client responses.
+
+[Remediated Code - safe/backend/api/check_coupon.php]:
+$stmt = mysqli_prepare($conn, "SELECT id, discount FROM coupons WHERE code = ?");
+mysqli_stmt_bind_param($stmt, "s", $code);
+mysqli_stmt_execute($stmt);
+$res = mysqli_stmt_get_result($stmt);
+
+if ($res && mysqli_num_rows($res) > 0) {
+    echo json_encode(["status" => "true", "message" => "Valid Coupon Applied!"]);
+} else {
+    echo json_encode(["status" => "false", "message" => "Invalid Coupon Code."]);
+}
+mysqli_stmt_close($stmt);
+
+C. ATTACK PAYLOAD & RESULT:
+- Payload: DISC10' OR (SELECT 1 FROM (SELECT COUNT(*), CONCAT(version(), FLOOR(RAND(0)*2)) x FROM information_schema.tables GROUP BY x) a) -- -
+- Before: Leaks the database version directly into the UI: "Duplicate entry '10.4.x-MariaDB1' for key 'group_key'".
+- After:  Safely evaluated as a literal code string. Returns clean "Invalid Coupon Code." with zero error disclosure.
+
+
+================================================================================
+7. SQL INJECTION (ADVANCED - UNION-BASED MULTI-STAGE DATA EXTRACTION)
+================================================================================
+Vulnerable Endpoint: backend/api/products.php
+Frontend Trigger:    frontend/index.html (Filter By Specific Category)
+
+A. BEFORE (Vulnerable Implementation):
+--------------------------------------------------------------------------------
+- Flaw: The category filter concatenated $_GET['category'] directly into the SQL
+  query, allowing attackers to append UNION SELECT statements to enumerate database
+  schema, table names, columns, and extract sensitive user password records.
+
+[Vulnerable Code - backend/api/products.php]:
+if ($cat !== '') {
+    $sql = "SELECT id, name, category, price FROM products WHERE category = '$cat'";
+} else {
+    $sql = "SELECT id, name, category, price FROM products";
+}
+$res = mysqli_query($conn, $sql);
+
+B. AFTER (Remediated Safe Implementation):
+--------------------------------------------------------------------------------
+- Fix: Uses parameterized prepared statements. The query structure cannot be 
+  altered by user input; attempts to append UNION queries are treated as 
+  literal string values searching for a non-existent category name.
+
+[Remediated Code - safe/backend/api/products.php]:
+if ($cat !== '') {
+    $stmt = mysqli_prepare($conn, "SELECT id, name, category, price FROM products WHERE category = ?");
+    mysqli_stmt_bind_param($stmt, "s", $cat);
+} else {
+    $stmt = mysqli_prepare($conn, "SELECT id, name, category, price FROM products");
+}
+mysqli_stmt_execute($stmt);
+$res = mysqli_stmt_get_result($stmt);
+
+C. ATTACK PAYLOADS & RESULTS:
+- Stage 1 (Column Enumeration):
+  Payload: ' UNION SELECT 1, 2, 3, 4 -- -
+  Before: Injects synthetic row confirming 4 columns.
+  After:  Returns "No inventory items matched your selected criteria."
+
+- Stage 2 (Table Enumeration):
+  Payload: ' UNION SELECT 1, table_name, 'Table', 0 FROM information_schema.tables WHERE table_schema=database() -- -
+  Before: Dumps all tables ('users', 'products', 'reviews', 'coupons') into the product catalog.
+  After:  Treated as a category string. Zero tables leaked.
+
+- Stage 3 (Data Extraction):
+  Payload: ' UNION SELECT id, username, email, password FROM users -- -
+  Before: Dumps all administrative usernames, emails, and passwords directly into the catalog view.
+  After:  Prepared statement confines input to a parameter. Database remains completely confidential.
+
+
+================================================================================
+8. SESSION MANAGEMENT & COOKIE HARDENING SUMMARY
+================================================================================
+Feature               Before (Vulnerable)            After (Safe Remediated)
+--------------------------------------------------------------------------------
+Session Cookie HttpOnly:   false (Accessible to JS)       true (Immune to XSS theft)
+Session Cookie SameSite:   Lax / Unset                    Strict (Immune to CSRF)
+Session Regeneration:      None (Session Fixation risk)   Yes, regenerated on login
+Anti-CSRF Token:           Missing                        Cryptographic 256-bit Token
+Database Error Reporting:  Exposed to frontend            Suppressed / Generic notices
+Input Sanitization:        None                           strip_tags & htmlspecialchars
+Output Encoding:           None (innerHTML sinks)         Context-aware escaping & textContent
+SQL Query Strategy:        Raw string concatenation       Parameterized Prepared Statements
+
+================================================================================
+END OF COMPARISON REPORT
+================================================================================

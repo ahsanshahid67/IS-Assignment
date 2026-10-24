@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechVault - Enterprise Cybersecurity Gear &amp; Hardware Keys (Safe Version)</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- Store Top Bar -->
+    <div class="header-topbar">
+        <div>Free Expedited Shipping on Orders Over $150 &bull; Certified FIDO2 &amp; PKI Hardware</div>
+        <div class="topbar-highlight">Enterprise Support: 1-800-TECH-VAULT</div>
+    </div>
+
+    <!-- Main Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="brand">
+            <div class="brand-icon">⚡</div>
+            <div class="brand-text">TECH<span>VAULT</span> <span style="font-size: 11px; background: #10b981; color: #042f2e; padding: 2px 7px; border-radius: 4px; vertical-align: middle; margin-left: 6px;">SAFE</span></div>
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-link active">Store Catalog</a></li>
+            <li><a href="product.html" class="nav-link">Product Details</a></li>
+            <li><a href="checkout.html" class="nav-link">Checkout</a></li>
+            <li><a href="login.html" class="nav-link">Account</a></li>
+        </ul>
+        <div class="nav-auth" id="nav-auth-container">
+            <a href="login.html" class="btn btn-primary btn-sm">Sign In</a>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <div class="container">
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <h1>Zero-Trust Hardware &amp; <span>Cyber Security</span> Gear</h1>
+            <p>Procure military-grade authentication dongles, hardware security modules, and encrypted storage with
+                tamper-evident manufacturing provenance.</p>
+
+            <!-- Search Feature -->
+            <form id="search-form" class="search-container" onsubmit="handleSearch(event)">
+                <input type="text" id="search-query" class="search-input"
+                    placeholder="Search equipment, tokens, encrypted drives...">
+                <button type="submit" class="btn btn-primary">Search Catalog</button>
+            </form>
+
+            <div id="search-result-banner" style="display: none;"></div>
+        </section>
+
+        <!-- Category Header & Navigation -->
+        <div
+            style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h2 style="font-size: 22px; font-weight: 700;">Equipment Catalog</h2>
+                <p style="color: var(--text-secondary); font-size: 13px;">Browse in-stock enterprise hardware and
+                    cryptographic security tokens.</p>
+            </div>
+
+            <div class="filter-bar" style="margin-bottom: 0;">
+                <button class="filter-btn active" onclick="loadProducts('')">All Equipment</button>
+                <button class="filter-btn" onclick="loadProducts('Hardware Security')">Hardware Security</button>
+                <button class="filter-btn" onclick="loadProducts('Network Gear')">Network Gear</button>
+                <button class="filter-btn" onclick="loadProducts('Privacy Gear')">Privacy Gear</button>
+            </div>
+        </div>
+
+        <!-- Category Filter Search Box -->
+        <div
+            style="background: var(--bg-card); padding: 14px 20px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 25px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <label style="font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap;">Filter By
+                Specific Category:</label>
+            <input type="text" id="custom-cat-input" class="form-control" style="flex: 1; min-width: 260px;"
+                placeholder="Enter category query (e.g. Hardware Security)...">
+            <button onclick="applyCustomFilter()" class="btn btn-secondary btn-sm">Filter</button>
+        </div>
+
+        <!-- Database Message Box -->
+        <div id="sql-error-box" class="sql-error-box" style="display: none;"></div>
+
+        <!-- Products Grid -->
+        <div id="products-grid" class="product-grid">
+            <div style="color: var(--text-muted); font-size: 14px;">Loading catalog items...</div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 TechVault Corporation. All rights reserved. &bull; Enterprise Cryptographic Solutions &bull;
+            Privacy Policy &bull; Terms of Service</p>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script>
+        async function loadProducts(category = '') {
+            const errorBox = document.getElementById('sql-error-box');
+            const grid = document.getElementById('products-grid');
+            errorBox.style.display = 'none';
+
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.textContent.trim() === (category || 'All Equipment')) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            try {
+                // Safe: Uses prepared statements on the backend (prevents SQL injection)
+                const res = await fetch(`../backend/api/products.php?category=${encodeURIComponent(category)}`);
+                const data = await res.json();
+
+                if (!data.rows || data.rows.length === 0) {
+                    grid.innerHTML = '<div style="color: var(--text-muted); padding: 20px;">No inventory items matched your selected criteria.</div>';
+                    return;
+                }
+
+                grid.innerHTML = data.rows.map(row => `
+                    <div class="product-card">
+                        <div>
+                            <div class="product-tag">${escapeHtml(String(row.col3 || 'Hardware'))}</div>
+                            <h3 class="product-title">${escapeHtml(String(row.col2 || 'Product'))}</h3>
+                            <p class="product-desc">SKU: #${escapeHtml(String(row.col1 || 'N/A'))} &bull; Verified Manufacturer Authenticity</p>
+                        </div>
+                        <div class="product-footer">
+                            <span class="product-price">$${escapeHtml(String(row.col4 || '0.00'))}</span>
+                            <a href="product.html?id=${encodeURIComponent(row.col1)}" class="btn btn-primary btn-sm">View Item</a>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                grid.innerHTML = `<div style="color: var(--accent-red);">Unable to retrieve catalog: ${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        function applyCustomFilter() {
+            const val = document.getElementById('custom-cat-input').value;
+            loadProducts(val);
+        }
+
+        async function handleSearch(e) {
+            e.preventDefault();
+            const q = document.getElementById('search-query').value;
+            const banner = document.getElementById('search-result-banner');
+
+            try {
+                // Safe: Backend sanitizes query using htmlspecialchars() before output (prevents Reflected XSS)
+                const res = await fetch(`../backend/api/search.php?q=${encodeURIComponent(q)}`);
+                const data = await res.json();
+
+                banner.className = 'search-banner';
+                banner.textContent = ''; // Clear existing
+                const strongText = document.createElement('strong');
+                strongText.textContent = data.query || q;
+                banner.append("Showing search results for: ", strongText);
+                banner.style.display = 'block';
+
+                history.pushState(null, '', `?q=${encodeURIComponent(q)}`);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadProducts('');
+
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('q')) {
+                const qVal = params.get('q');
+                document.getElementById('search-query').value = qVal;
+                handleSearch(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+
+</html>

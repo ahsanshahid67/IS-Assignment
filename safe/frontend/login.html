@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechVault - Account Access &amp; Settings (Safe Version)</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Store Top Bar -->
+    <div class="header-topbar">
+        <div>Enterprise Account Portal &bull; Encrypted Session Security</div>
+        <div class="topbar-highlight">Support: accounts@techvault.corp</div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="brand">
+            <div class="brand-icon">⚡</div>
+            <div class="brand-text">TECH<span>VAULT</span> <span style="font-size: 11px; background: #10b981; color: #042f2e; padding: 2px 7px; border-radius: 4px; vertical-align: middle; margin-left: 6px;">SAFE</span></div>
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-link">Store Catalog</a></li>
+            <li><a href="product.html" class="nav-link">Product Details</a></li>
+            <li><a href="checkout.html" class="nav-link">Checkout</a></li>
+            <li><a href="login.html" class="nav-link active">Account</a></li>
+        </ul>
+        <div class="nav-auth" id="nav-auth-container">
+            <a href="login.html" class="btn btn-primary btn-sm">Sign In</a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        
+        <!-- Sign In Form -->
+        <div id="login-section" class="form-card">
+            <h2 style="font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 6px;">Sign In to TechVault</h2>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 25px;">
+                Enter your credentials to access order status, license keys, and account settings.
+            </p>
+
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">Username / Corporate ID:</label>
+                    <input type="text" id="login-username" class="form-control" required placeholder="Enter username...">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password:</label>
+                    <input type="password" id="login-password" class="form-control" placeholder="Enter password...">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+            </form>
+
+            <div id="login-feedback" style="margin-top: 20px; display: none; padding: 12px; border-radius: var(--radius-sm); font-size: 13px;"></div>
+        </div>
+
+        <!-- Account Settings & Profile Card -->
+        <div id="profile-section" class="form-card" style="display: none; max-width: 600px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="font-size: 22px; font-weight: 800; color: #fff;">Account Profile</h2>
+                <span class="user-pill"><span class="status-dot"></span> Active Session</span>
+            </div>
+
+            <div style="background: var(--bg-input); padding: 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 25px;">
+                <p style="font-size: 14px; margin-bottom: 6px;"><strong>Username:</strong> <span id="prof-username" style="color: var(--accent-cyan); font-weight: bold;"></span></p>
+                <p style="font-size: 14px; margin-bottom: 6px;"><strong>Account Tier:</strong> <span id="prof-role"></span></p>
+                <p style="font-size: 14px; margin-bottom: 6px;"><strong>Contact Email:</strong> <span id="prof-email" style="color: #fff; font-family: monospace;"></span></p>
+                <p style="font-size: 12px; color: var(--text-muted);"><strong>CSRF Token:</strong> <span id="prof-csrf" style="font-family: monospace; font-size: 11px; color: var(--accent-green);"></span></p>
+            </div>
+
+            <!-- Email Settings Update (Protected by CSRF Token) -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 20px;">
+                <h4 style="color: #fff; font-size: 15px; margin-bottom: 6px;">Update Notification Email</h4>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 15px;">
+                    Order confirmations, hardware serial registrations, and shipping notices will be delivered here.
+                </p>
+
+                <form id="email-form" onsubmit="handleUpdateEmail(event)">
+                    <!-- Hidden Anti-CSRF Token Field -->
+                    <input type="hidden" id="csrf-token-field" name="csrf_token" value="">
+
+                    <div class="form-group">
+                        <label class="form-label">New Email Address:</label>
+                        <input type="email" id="update-email-input" class="form-control" required placeholder="name@company.com">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Email Address</button>
+                </form>
+
+                <div id="email-feedback" style="margin-top: 12px; display: none; padding: 10px; border-radius: 4px; font-size: 13px;"></div>
+            </div>
+
+            <button onclick="handleLogout()" class="btn btn-secondary btn-sm" style="margin-top: 25px; width: 100%;">Sign Out of Account</button>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 TechVault Corporation. All rights reserved. &bull; Enterprise Cryptographic Solutions &bull; Privacy Policy &bull; Terms of Service</p>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script>
+        function renderAuthView() {
+            const loginCard = document.getElementById('login-section');
+            const profileCard = document.getElementById('profile-section');
+
+            if (currentUser) {
+                loginCard.style.display = 'none';
+                profileCard.style.display = 'block';
+
+                document.getElementById('prof-username').textContent = currentUser.username;
+                document.getElementById('prof-role').textContent = currentUser.role || 'Enterprise Customer';
+                document.getElementById('prof-email').textContent = currentUser.email || 'None';
+                document.getElementById('prof-csrf').textContent = csrfToken ? (csrfToken.substring(0, 16) + '...') : 'Active';
+                document.getElementById('csrf-token-field').value = csrfToken;
+            } else {
+                loginCard.style.display = 'block';
+                profileCard.style.display = 'none';
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('login-username').value;
+            const p = document.getElementById('login-password').value;
+            const feedback = document.getElementById('login-feedback');
+            feedback.style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('username', u);
+            formData.append('password', p);
+
+            try {
+                // Safe: Uses prepared statements on the backend (prevents SQL injection auth bypass)
+                const res = await fetch('../backend/api/login.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    feedback.style.background = 'rgba(16, 185, 129, 0.15)';
+                    feedback.style.border = '1px solid var(--accent-green)';
+                    feedback.style.color = '#6ee7b7';
+                    feedback.innerHTML = `<strong>✓ ${escapeHtml(data.message)}</strong>`;
+                    currentUser = data.user;
+                    csrfToken = data.csrf_token;
+                    updateNavAuth();
+                    setTimeout(renderAuthView, 600);
+                } else {
+                    feedback.style.background = 'rgba(239, 68, 68, 0.15)';
+                    feedback.style.border = '1px solid var(--accent-red)';
+                    feedback.style.color = '#fca5a5';
+                    feedback.innerHTML = `<strong>✕ ${escapeHtml(data.message)}</strong>`;
+                }
+            } catch (err) {
+                feedback.style.background = 'rgba(239, 68, 68, 0.15)';
+                feedback.style.color = '#fca5a5';
+                feedback.textContent = `Sign in error: ${err.message}`;
+            }
+        }
+
+        async function handleUpdateEmail(e) {
+            e.preventDefault();
+            const email = document.getElementById('update-email-input').value;
+            const feedback = document.getElementById('email-feedback');
+            feedback.style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('csrf_token', csrfToken); // Anti-CSRF Token protection
+
+            try {
+                // Safe: POST required and Anti-CSRF token validated
+                const res = await fetch('../backend/api/update_email.php', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-Token': csrfToken
+                    }
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    feedback.style.background = 'rgba(16, 185, 129, 0.15)';
+                    feedback.style.border = '1px solid var(--accent-green)';
+                    feedback.style.color = '#6ee7b7';
+                    feedback.innerHTML = `✓ ${escapeHtml(data.message)}`;
+                    currentUser.email = email;
+                    document.getElementById('prof-email').textContent = email;
+                } else {
+                    feedback.style.background = 'rgba(239, 68, 68, 0.15)';
+                    feedback.style.border = '1px solid var(--accent-red)';
+                    feedback.style.color = '#fca5a5';
+                    feedback.innerHTML = `✕ ${escapeHtml(data.message)}`;
+                }
+            } catch (err) {
+                feedback.style.background = 'rgba(239, 68, 68, 0.15)';
+                feedback.style.color = '#fca5a5';
+                feedback.textContent = `Error: ${err.message}`;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await syncSession();
+            renderAuthView();
+        });
+    </script>
+</body>
+</html>

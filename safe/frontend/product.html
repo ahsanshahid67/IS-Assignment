@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechVault - Product Specifications &amp; Reviews (Safe Version)</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- Store Top Bar -->
+    <div class="header-topbar">
+        <div>Authorized Distributor for Enterprise Authentication Keys &bull; FIDO2 Certified</div>
+        <div class="topbar-highlight">Free Global Technical Support</div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="brand">
+            <div class="brand-icon">⚡</div>
+            <div class="brand-text">TECH<span>VAULT</span> <span style="font-size: 11px; background: #10b981; color: #042f2e; padding: 2px 7px; border-radius: 4px; vertical-align: middle; margin-left: 6px;">SAFE</span></div>
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-link">Store Catalog</a></li>
+            <li><a href="product.html" class="nav-link active">Product Details</a></li>
+            <li><a href="checkout.html" class="nav-link">Checkout</a></li>
+            <li><a href="login.html" class="nav-link">Account</a></li>
+        </ul>
+        <div class="nav-auth" id="nav-auth-container">
+            <a href="login.html" class="btn btn-primary btn-sm">Sign In</a>
+        </div>
+    </nav>
+
+    <!-- Content Container -->
+    <div class="container">
+
+        <!-- Breadcrumb Navigation -->
+        <div style="margin-bottom: 20px; font-size: 13px; color: var(--text-muted);">
+            <a href="index.html" style="color: var(--text-secondary); text-decoration: none;">Catalog</a> &bull;
+            <span id="breadcrumb-category">Hardware</span> &bull;
+            <span id="breadcrumb-name" style="color: var(--accent-cyan);">Product Details</span>
+        </div>
+
+        <!-- Product Showcase Card -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 35px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 35px;"
+            class="product-detail-layout">
+            <div>
+                <div id="product-category" class="product-tag" style="font-size: 13px;">Hardware Authentication &bull;
+                    In Stock</div>
+                <h1 id="product-title" style="font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 12px;">
+                    Loading Product...</h1>
+                <p id="product-desc"
+                    style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px; line-height: 1.7;">
+                    Retrieving technical specifications and verified manufacturing provenance...
+                </p>
+
+                <ul
+                    style="color: var(--text-secondary); font-size: 13px; list-style: inside disc; margin-bottom: 25px; line-height: 1.8;">
+                    <li>High-assurance cryptographic hardware security module with tamper resistance</li>
+                    <li>Direct compatibility with Windows Hello, Google Workspace, GitHub, and Okta</li>
+                    <li>IP68 water-resistant and crush-proof reinforced enclosure</li>
+                </ul>
+
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <span id="product-price" style="font-size: 28px; font-weight: 800; color: #fff;">$0.00</span>
+                    <a id="checkout-link" href="checkout.html" class="btn btn-primary">Add to Cart &amp; Checkout
+                        &rarr;</a>
+                </div>
+            </div>
+
+            <!-- Customer Review Submission Form -->
+            <div
+                style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 25px;">
+                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--accent-cyan);">Customer
+                    Review</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 18px;">
+                    Share your experience with this security token's hardware durability and system compatibility.
+                </p>
+
+                <form id="add-review-form" onsubmit="submitReview(event)">
+                    <input type="hidden" id="review-product-id" name="product_id" value="1">
+
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="form-label">Your Name / Organization:</label>
+                        <input type="text" id="review-author" class="form-control" required
+                            placeholder="e.g. Sarah Jenkins">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="form-label">Review Comments:</label>
+                        <textarea id="review-comment" class="form-control" rows="3" required
+                            placeholder="Write your review here..."></textarea>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <button type="submit" class="btn btn-primary btn-sm">Submit Review</button>
+                        <button type="button" onclick="resetReviews()" class="btn btn-secondary btn-sm"
+                            title="Restore sample reviews">Reset Sample Reviews</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Customer Reviews Feed -->
+        <section class="reviews-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 20px; font-weight: 700;">Verified Customer Reviews</h2>
+                <span id="review-count-badge"
+                    style="color: var(--accent-cyan); font-size: 13px; font-weight: 600;">Loading reviews...</span>
+            </div>
+
+            <div id="reviews-feed">
+                <div style="color: var(--text-muted);">Fetching customer reviews...</div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 TechVault Corporation. All rights reserved. &bull; Enterprise Cryptographic Solutions &bull;
+            Privacy Policy &bull; Terms of Service</p>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentProductId = urlParams.get('id') || '1';
+
+        // Fetch selected product details
+        async function loadProductDetails() {
+            try {
+                const res = await fetch(`../backend/api/products.php?id=${encodeURIComponent(currentProductId)}`);
+                const data = await res.json();
+
+                if (data.product) {
+                    const p = data.product;
+                    document.getElementById('product-category').textContent = `${p.category || 'Hardware'} • In Stock`;
+                    document.getElementById('product-title').textContent = p.name || 'Hardware Security Token';
+                    document.getElementById('product-desc').textContent = p.description || 'Enterprise cryptographic authentication hardware.';
+                    document.getElementById('product-price').textContent = `$${parseFloat(p.price || 0).toFixed(2)}`;
+                    document.getElementById('review-product-id').value = p.id;
+                    document.getElementById('checkout-link').href = `checkout.html?id=${encodeURIComponent(p.id)}`;
+
+                    document.getElementById('breadcrumb-category').textContent = p.category || 'Hardware';
+                    document.getElementById('breadcrumb-name').textContent = p.name || 'Product Details';
+                    document.title = `TechVault - ${p.name} (Safe)`;
+                } else {
+                    document.getElementById('product-title').textContent = "Product Not Found";
+                    document.getElementById('product-desc').textContent = "The requested hardware SKU could not be found in our inventory database.";
+                }
+            } catch (err) {
+                console.error("Error loading product details:", err);
+                document.getElementById('product-title').textContent = "Error Loading Product";
+            }
+        }
+
+        // Fetch customer reviews for this product
+        async function loadReviews() {
+            const feed = document.getElementById('reviews-feed');
+            const countBadge = document.getElementById('review-count-badge');
+
+            try {
+                const res = await fetch(`../backend/api/init.php?product_id=${encodeURIComponent(currentProductId)}`);
+                const data = await res.json();
+
+                const reviews = data.reviews || [];
+                countBadge.textContent = `${reviews.length} Customer Reviews`;
+
+                if (reviews.length === 0) {
+                    feed.innerHTML = '<div style="color: var(--text-muted); padding: 15px 0;">No reviews written for this product yet. Be the first to share your experience!</div>';
+                    return;
+                }
+
+                // Safe: escapeHtml prevents Stored XSS from executing in the browser
+                feed.innerHTML = reviews.map(r => `
+                    <div class="review-item">
+                        <div class="review-meta">
+                            <span class="review-author">${escapeHtml(r.author || r.user_name || 'Customer')}</span>
+                            <span>${escapeHtml(r.created_at || 'Verified Purchase')} &bull; Item: ${escapeHtml(r.product_name || 'Hardware Key')}</span>
+                        </div>
+                        <div class="review-comment">${escapeHtml(r.comment)}</div>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                feed.innerHTML = `<div style="color: var(--accent-red);">Unable to load reviews: ${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        async function submitReview(e) {
+            e.preventDefault();
+            const author = document.getElementById('review-author').value;
+            const comment = document.getElementById('review-comment').value;
+            const pid = document.getElementById('review-product-id').value || currentProductId;
+
+            const formData = new FormData();
+            formData.append('product_id', pid);
+            formData.append('author', author);
+            formData.append('comment', comment);
+
+            try {
+                const res = await fetch('../backend/api/add_review.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('review-comment').value = '';
+                    loadReviews();
+                } else {
+                    alert("Could not post review: " + (data.error || "Please try again."));
+                }
+            } catch (err) {
+                alert("Connection error: " + err.message);
+            }
+        }
+
+        async function resetReviews() {
+            try {
+                await fetch('../backend/api/reset_reviews.php');
+                loadReviews();
+            } catch (e) {
+                alert("Error resetting reviews: " + e.message);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadProductDetails();
+            loadReviews();
+            if (currentUser) {
+                document.getElementById('review-author').value = currentUser.username;
+            }
+        });
+    </script>
+</body>
+
+</html>

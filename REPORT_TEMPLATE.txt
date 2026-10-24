@@ -1,0 +1,180 @@
+================================================================================
+PART 2: WEB SECURITY PROJECT REPORT (SHORT BLUE TEAM REPORT)
+Project: TechVault E-Commerce | Tech Stack: PHP, MySQL, Vanilla JS, CSS
+================================================================================
+
+Vulnerable App URL: http://localhost/IS_Assignment/frontend/index.html
+Safe App URL:       http://localhost/IS_Assignment/safe/frontend/index.html
+
+================================================================================
+1. REFLECTED XSS
+================================================================================
+• Where It Exploits:
+  backend/api/search.php -> frontend/index.html (Search Input Bar)
+
+• Vulnerable Code:
+  echo json_encode(["html" => "Showing search results for: <strong>$q</strong>"]);
+  banner.innerHTML = data.html;
+
+• Payload:
+  <img src="x" onerror="alert('Reflected_XSS')">
+  (Note: Modern browsers block <script> inside innerHTML; <img> or <svg> event handlers execute reliably)
+
+• Evidence:
+  [SCREENSHOT: Popup showing "Reflected_XSS" on vulnerable index.html]
+  [SCREENSHOT: Safe version shows text as plain string, no popup]
+
+• The Fix (safe/backend/api/search.php & safe/frontend/index.html):
+  $safe_q = htmlspecialchars($q, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+  banner.textContent = data.query; // Use textContent instead of innerHTML
+
+
+================================================================================
+2. STORED XSS
+================================================================================
+• Where It Exploits:
+  backend/api/add_review.php -> frontend/product.html (Review Comment Box)
+
+• Vulnerable Code:
+  $sql = "INSERT INTO reviews (product_id, author, comment) VALUES ($pid, '$author', '$comment')";
+  feed.innerHTML = reviews.map(r => `<div>${r.comment}</div>`).join('');
+
+• Payload:
+  <img src="x" onerror="alert('Stored_XSS')">
+
+• Evidence:
+  [SCREENSHOT: Popup "Stored_XSS" executing every time product.html opens]
+  [SCREENSHOT: Safe version renders payload as inert escaped text]
+
+• The Fix (safe/backend/api/add_review.php & safe/frontend/product.html):
+  $clean_comment = htmlspecialchars(strip_tags($comment), ENT_QUOTES, 'UTF-8');
+  $stmt = mysqli_prepare($conn, "INSERT INTO reviews (product_id, author, comment) VALUES (?, ?, ?)");
+  // Frontend: feed.innerHTML = reviews.map(r => `<div>${escapeHtml(r.comment)}</div>`);
+
+
+================================================================================
+3. DOM-BASED XSS
+================================================================================
+• Where It Exploits:
+  frontend/checkout.html (URL Fragment / Hash `#promo=`)
+
+• Vulnerable Code:
+  const rawPayload = decodeURIComponent(window.location.hash.substring(7));
+  canvas.innerHTML = `<strong>Active Partner Token:</strong> ${rawPayload}`;
+
+• Payload:
+  http://localhost/IS_Assignment/frontend/checkout.html#promo=<img src=x onerror=alert('DOM_XSS')>
+
+• Evidence:
+  [SCREENSHOT: Popup "DOM_XSS" executing on client side without server call]
+  [SCREENSHOT: Safe version displays raw text safely without executing]
+
+• The Fix (safe/frontend/checkout.html):
+  const codeNode = document.createElement('span');
+  codeNode.textContent = rawPayload; // textContent prevents script execution
+  canvas.appendChild(codeNode);
+
+
+================================================================================
+4. CSRF (CROSS-SITE REQUEST FORGERY)
+================================================================================
+• Where It Exploits:
+  backend/api/update_email.php (triggered via external frontend/csrf_attacker.html)
+
+• Vulnerable Code:
+  $email = $_REQUEST['email'] ?? ''; // Accepts GET/POST with no CSRF validation
+  $sql = "UPDATE users SET email = '$email' WHERE id = " . $_SESSION['user']['id'];
+
+• Attack Setup & Payload:
+  External page submits:
+  <form action="http://localhost/IS_Assignment/backend/api/update_email.php" method="GET">
+    <input type="hidden" name="email" value="attacker@evil.com">
+  </form>
+
+• Evidence:
+  [SCREENSHOT: Victim logged in at login.html]
+  [SCREENSHOT: Attacker site csrf_attacker.html clicked]
+  [SCREENSHOT: Victim email hijacked to attacker@evil.com]
+  [SCREENSHOT: Safe version blocks with 403 Forbidden: "Invalid CSRF token"]
+
+• The Fix (safe/backend/api/update_email.php):
+  if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
+  if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+      http_response_code(403);
+      exit("Invalid or missing CSRF token");
+  }
+
+
+================================================================================
+5. SQL INJECTION (EASY - AUTHENTICATION BYPASS)
+================================================================================
+• Where It Exploits:
+  backend/api/login.php -> frontend/login.html (Username field)
+
+• Vulnerable Code:
+  $sql = "SELECT * FROM users WHERE username = '$u' AND password = '$p'";
+
+• Payload:
+  Username: admin' -- 
+  Password: 123 (any password)
+
+• Evidence:
+  [SCREENSHOT: Logged in as Administrator without knowing password]
+  [SCREENSHOT: Safe version rejects login with "Invalid credentials"]
+
+• The Fix (safe/backend/api/login.php):
+  $stmt = mysqli_prepare($conn, "SELECT * FROM users WHERE username = ?");
+  mysqli_stmt_bind_param($stmt, "s", $u);
+  mysqli_stmt_execute($stmt);
+
+
+================================================================================
+6. SQL INJECTION (INTERMEDIATE - ERROR-BASED LEAKAGE)
+================================================================================
+• Where It Exploits:
+  backend/api/check_coupon.php -> frontend/checkout.html (Coupon Code input)
+
+• Vulnerable Code:
+  $sql = "SELECT id, discount FROM coupons WHERE code = '$code'";
+  if (!$res) { echo json_encode(["message" => mysqli_error($conn)]); } // Leaks DB error
+
+• Payload:
+  DISC10' OR (SELECT 1 FROM (SELECT COUNT(*), CONCAT(version(), FLOOR(RAND(0)*2)) x FROM information_schema.tables GROUP BY x) a) -- -
+
+• Evidence:
+  [SCREENSHOT: Database error box reveals MySQL version: "Duplicate entry '10.4.x-MariaDB1'"]
+  [SCREENSHOT: Safe version returns clean "Invalid Coupon Code", no errors leaked]
+
+• The Fix (safe/backend/api/check_coupon.php):
+  $stmt = mysqli_prepare($conn, "SELECT id, discount FROM coupons WHERE code = ?");
+  mysqli_stmt_bind_param($stmt, "s", $code);
+  // Never expose mysqli_error() to user responses
+
+
+================================================================================
+7. SQL INJECTION (ADVANCED - MULTI-STAGE UNION DATA EXTRACTION)
+================================================================================
+• Where It Exploits:
+  backend/api/products.php -> frontend/index.html (Category Filter input)
+
+• Vulnerable Code:
+  $sql = "SELECT id, name, category, price FROM products WHERE category = '$cat'";
+
+• Payloads (4-Stage Chain):
+  Stage 1 (Columns):  ' UNION SELECT 1, 2, 3, 4 -- -
+  Stage 2 (Tables):   ' UNION SELECT 1, table_name, 'Table', 0 FROM information_schema.tables WHERE table_schema=database() -- -
+  Stage 3 (Columns):  ' UNION SELECT 1, column_name, 'Column', 0 FROM information_schema.columns WHERE table_name='users' -- -
+  Stage 4 (Dump):     ' UNION SELECT id, username, email, password FROM users -- -
+
+• Evidence:
+  [SCREENSHOT: Stage 1 confirming 4 columns injected in catalog]
+  [SCREENSHOT: Stage 2 dumping table names (users, products, reviews, coupons)]
+  [SCREENSHOT: Stage 3 dumping user table columns (id, username, password, email)]
+  [SCREENSHOT: Stage 4 dumping administrative usernames and passwords]
+  [SCREENSHOT: Safe version returns "No items matched", all UNION attacks blocked]
+
+• The Fix (safe/backend/api/products.php):
+  $stmt = mysqli_prepare($conn, "SELECT id, name, category, price FROM products WHERE category = ?");
+  mysqli_stmt_bind_param($stmt, "s", $cat);
+  mysqli_stmt_execute($stmt);
+================================================================================
