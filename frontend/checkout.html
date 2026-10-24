@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechVault - Secure Order Checkout</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Store Top Bar -->
+    <div class="header-topbar">
+        <div>Secure 256-Bit SSL Encrypted Checkout &bull; Orders Dispatched Within 24 Hours</div>
+        <div class="topbar-highlight">Guaranteed Genuine Hardware</div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="brand">
+            <div class="brand-icon">⚡</div>
+            <div class="brand-text">TECH<span>VAULT</span></div>
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-link">Store Catalog</a></li>
+            <li><a href="product.html" class="nav-link">Product Details</a></li>
+            <li><a href="checkout.html" class="nav-link active">Checkout</a></li>
+            <li><a href="login.html" class="nav-link">Account</a></li>
+        </ul>
+        <div class="nav-auth" id="nav-auth-container">
+            <a href="login.html" class="btn btn-primary btn-sm">Sign In</a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        
+        <h1 style="font-size: 26px; font-weight: 800; margin-bottom: 25px;">Review Your Order &amp; Checkout</h1>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;" class="checkout-layout">
+            
+            <!-- Left: Order Summary & Coupon Code -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 30px;">
+                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 15px; color: #fff;">Order Summary</h3>
+                
+                <div style="padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: space-between; font-size: 14px;">
+                    <span id="checkout-item-name">YubiKey 5C NFC Security Key (Qty: 1)</span>
+                    <strong id="checkout-item-price">$55.00</strong>
+                </div>
+                <div style="padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: space-between; font-size: 14px;">
+                    <span>Priority Secure Handling &amp; Shipping</span>
+                    <strong>$15.00</strong>
+                </div>
+                <div id="discount-row" style="padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: none; justify-content: space-between; font-size: 14px; color: var(--accent-green);">
+                    <span>Promotional Discount Applied</span>
+                    <strong id="discount-amount">-$10.00</strong>
+                </div>
+                <div style="padding: 15px 0; display: flex; justify-content: space-between; font-size: 18px; font-weight: 800; color: #fff;">
+                    <span>Total Amount:</span>
+                    <span id="total-price" style="color: var(--accent-cyan);">$70.00</span>
+                </div>
+
+                <!-- Coupon Verification Form -->
+                <div style="margin-top: 25px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 20px;">
+                    <label class="form-label">Have a Promotional Code?</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="coupon-input" class="form-control" placeholder="Enter coupon code (e.g. DISC10)">
+                        <button onclick="verifyCoupon()" class="btn btn-primary btn-sm" style="white-space: nowrap;">Apply</button>
+                    </div>
+
+                    <div id="coupon-result-box" style="margin-top: 12px; display: none; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px;"></div>
+                </div>
+
+                <button class="btn btn-primary" style="width: 100%; margin-top: 25px; padding: 14px;" onclick="alert('Thank you! Your order has been placed.')">Complete Purchase &rarr;</button>
+            </div>
+
+            <!-- Right: Promotional Voucher Preview -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 30px;">
+                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--accent-cyan);">Corporate Rewards &amp; Voucher Reference</h3>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
+                    Redeem affiliate vouchers or corporate partner discount tokens directly into your current session.
+                </p>
+
+                <div class="form-group">
+                    <label class="form-label">Voucher Reference Token:</label>
+                    <input type="text" id="dom-promo-input" class="form-control" placeholder="Enter token reference...">
+                </div>
+                <button onclick="triggerDomXss()" class="btn btn-secondary btn-sm">Preview Voucher Status</button>
+
+                <!-- Voucher Preview Display -->
+                <div style="margin-top: 25px; background: #060911; border: 1px dashed #334155; border-radius: var(--radius-sm); padding: 18px;">
+                    <strong style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">APPLIED VOUCHER STATUS:</strong>
+                    <div id="voucher-preview-canvas" style="color: var(--text-primary); font-size: 14px;">
+                        <em>No promotional voucher code currently active.</em>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 TechVault Corporation. All rights reserved. &bull; Enterprise Cryptographic Solutions &bull; Privacy Policy &bull; Terms of Service</p>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script>
+        const checkoutParams = new URLSearchParams(window.location.search);
+        const checkoutProductId = checkoutParams.get('id') || '1';
+        let baseProductPrice = 55.00;
+        let discountActive = false;
+
+        async function loadCheckoutProduct() {
+            try {
+                const res = await fetch(`../backend/api/products.php?id=${encodeURIComponent(checkoutProductId)}`);
+                const data = await res.json();
+                if (data.product) {
+                    baseProductPrice = parseFloat(data.product.price) || 55.00;
+                    document.getElementById('checkout-item-name').textContent = `${data.product.name} (Qty: 1)`;
+                    document.getElementById('checkout-item-price').textContent = `$${baseProductPrice.toFixed(2)}`;
+                    updateTotal();
+                }
+            } catch (e) {
+                console.error("Could not load checkout product:", e);
+            }
+        }
+
+        function updateTotal() {
+            let total = baseProductPrice + 15.00;
+            if (discountActive) {
+                total -= 10.00;
+            }
+            document.getElementById('total-price').textContent = `$${total.toFixed(2)}`;
+        }
+
+        async function verifyCoupon() {
+            const code = document.getElementById('coupon-input').value;
+            const resultBox = document.getElementById('coupon-result-box');
+            resultBox.style.display = 'block';
+
+            try {
+                const res = await fetch(`../backend/api/check_coupon.php?coupon_code=${encodeURIComponent(code)}`);
+                const data = await res.json();
+
+                if (data.status === 'true') {
+                    resultBox.style.background = 'rgba(16, 185, 129, 0.15)';
+                    resultBox.style.border = '1px solid var(--accent-green)';
+                    resultBox.style.color = '#6ee7b7';
+                    resultBox.innerHTML = `<strong>✓ ${escapeHtml(data.message)}</strong> (Discount of -$10.00 applied)`;
+                    document.getElementById('discount-row').style.display = 'flex';
+                    discountActive = true;
+                    updateTotal();
+                } else if (data.status === 'error') {
+                    resultBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                    resultBox.style.border = '1px solid var(--accent-red)';
+                    resultBox.style.color = '#fca5a5';
+                    resultBox.innerHTML = `<strong>Coupon System Notice:</strong><br><code>${escapeHtml(data.message)}</code>`;
+                } else {
+                    resultBox.style.background = 'rgba(245, 158, 11, 0.15)';
+                    resultBox.style.border = '1px solid var(--accent-amber)';
+                    resultBox.style.color = '#fde68a';
+                    resultBox.innerHTML = `<strong>✕ ${escapeHtml(data.message)}</strong> (The code entered could not be verified)`;
+                    document.getElementById('discount-row').style.display = 'none';
+                    discountActive = false;
+                    updateTotal();
+                }
+            } catch (err) {
+                resultBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                resultBox.style.color = '#fca5a5';
+                resultBox.innerHTML = `Connection error: ${err.message}`;
+            }
+        }
+
+        function renderDomVoucher(rawCode) {
+            const canvas = document.getElementById('voucher-preview-canvas');
+            canvas.innerHTML = `<strong>Voucher Applied:</strong> ${rawCode}`;
+        }
+
+        function triggerDomXss() {
+            const val = document.getElementById('dom-promo-input').value;
+            window.location.hash = "promo=" + encodeURIComponent(val);
+            renderDomVoucher(val);
+        }
+
+        function checkDomHash() {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#promo=')) {
+                const rawPayload = decodeURIComponent(hash.substring(7));
+                document.getElementById('dom-promo-input').value = rawPayload;
+                renderDomVoucher(rawPayload);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadCheckoutProduct();
+            checkDomHash();
+        });
+        window.addEventListener('hashchange', checkDomHash);
+    </script>
+</body>
+</html>

